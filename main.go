@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+
 	"log"
 	"log/slog"
 	"net"
+	"strconv"
 )
 
 const defaultListenAddr = ":5001"
@@ -54,7 +56,9 @@ func (s Server) loop() {
 	for {
 		select {
 		case rawMsg := <-s.msgCh:
-			fmt.Println(string(rawMsg))
+			if err := s.handleRawMessage(rawMsg); err != nil {
+				slog.Error("handle Raw Message error", "err", err)
+			}
 		case <-s.quitCh:
 			return
 		case peer := <-s.addPeerCh:
@@ -87,7 +91,27 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 }
 
+func (s *Server) handleRawMessage(msg []byte) error {
+
+	// get err
+	strMsg, err := strconv.Unquote(string(msg))
+	if err != nil {
+		return fmt.Errorf("unquote raw msg error: %w", err)
+	}
+	cmd, err := ParseCommand(strMsg)
+	if err != nil {
+		return err
+	}
+	slog.Info("received command", "cmd", cmd)
+	return nil
+}
+
 func main() {
-	server := NewServer(Config{ListenAddr: defaultListenAddr})
-	log.Fatal(server.Start())
+
+	go func() {
+		server := NewServer(Config{ListenAddr: defaultListenAddr})
+		log.Fatal(server.Start())
+	}()
+
+	select {} // blocking here
 }

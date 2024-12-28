@@ -1,2 +1,2 @@
 # dotel
-a hotel for data, based on redis
+a hotel for data, based on redis!
